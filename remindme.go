@@ -24,8 +24,8 @@ type DB struct {
 }
 
 // New creates a db
-func New() DB {
-	return DB{
+func New() *DB {
+	return &DB{
 		ExpiredReminders: make(chan Reminder),
 		Reminders:        make(map[int]Reminder),
 	}
