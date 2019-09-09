@@ -9,8 +9,11 @@ func TestFindByTime(t *testing.T) {
 	db := New()
 	author := "aaron"
 
-	db.Add(author, "do remindme with brad",
-		time.Now().Add(-time.Minute))
+	db.Add(Reminder{
+		Author:  author,
+		Body:    "do remindme with brad",
+		EndTime: time.Now().Add(-time.Minute),
+	})
 
 	if db.Count() != 1 {
 		t.Error("Reminders map is not of length 1")
@@ -33,8 +36,11 @@ func TestFindByAuthor(t *testing.T) {
 	db := New()
 	author := "aaron"
 
-	db.Add(author, "do remindme with brad",
-		time.Now().Add(-time.Minute))
+	db.Add(Reminder{
+		Author:  author,
+		Body:    "do remindme with brad",
+		EndTime: time.Now().Add(-time.Minute),
+	})
 
 	if db.Count() != 1 {
 		t.Error("Reminders map is not of length 1")
@@ -57,8 +63,11 @@ func TestFindByKey(t *testing.T) {
 	const author = "aaron"
 	const key = 0
 
-	db.Add(author, "do remindme with brad",
-		time.Now().Add(-time.Minute))
+	db.Add(Reminder{
+		Author:  author,
+		Body:    "do remindme with brad",
+		EndTime: time.Now().Add(-time.Minute),
+	})
 
 	if db.Count() != 1 {
 		t.Error("Reminders map is not of length 1")

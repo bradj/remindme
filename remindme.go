@@ -11,6 +11,7 @@ type Reminder struct {
 	Author  string
 	Body    string
 	Channel string
+	Network string
 	EndTime time.Time
 }
 
@@ -32,16 +33,12 @@ func New() *DB {
 }
 
 // Add a new reminder
-func (d *DB) Add(author string, body string, end time.Time) {
+func (d *DB) Add(reminder Reminder) {
 	d.mut.Lock()
 	defer d.mut.Unlock()
 
-	d.Reminders[d.ID] = Reminder{
-		ID:      d.ID,
-		Author:  author,
-		Body:    body,
-		EndTime: end,
-	}
+	reminder.ID = d.ID
+	d.Reminders[d.ID] = reminder
 
 	d.ID++
 }
@@ -112,7 +109,7 @@ func (d *DB) findByAuthor(author string) []Reminder {
 // WaitForReminders starts the reminder timer and emits expired reminders
 // on DB.expiredReminders
 func (d *DB) WaitForReminders() {
-	ticker := time.NewTicker(time.Minute)
+	ticker := time.NewTicker(time.Second * 10)
 
 	for {
 		t := <-ticker.C
