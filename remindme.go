@@ -59,21 +59,21 @@ func (d *DB) Count() int {
 	return len(d.Reminders)
 }
 
-func (d *DB) findByTime(t time.Time) {
+func (d *DB) findByTime(t time.Time) []Reminder {
 	d.mut.Lock()
 	defer d.mut.Unlock()
+
+	reminders := make([]Reminder, 0)
 
 	for _, rem := range d.Reminders {
 		if rem.EndTime.After(t) {
 			continue
 		}
 
-		// send reminder
-		d.ExpiredReminders <- rem
-
-		// remove reminder
-		delete(d.Reminders, rem.ID)
+		reminders = append(reminders, rem)
 	}
+
+	return reminders
 }
 
 func (d *DB) findByKey(key int) *Reminder {
@@ -106,13 +106,22 @@ func (d *DB) findByAuthor(author string) []Reminder {
 	return reminders
 }
 
+func (d *DB) expireReminders(reminders []Reminder) {
+	for _, rem := range reminders {
+		// send reminder
+		d.ExpiredReminders <- rem
+
+		// remove reminder
+		d.Remove(rem)
+	}
+}
+
 // WaitForReminders starts the reminder timer and emits expired reminders
 // on DB.expiredReminders
 func (d *DB) WaitForReminders() {
 	ticker := time.NewTicker(time.Second * 10)
 
-	for {
-		t := <-ticker.C
-		d.findByTime(t)
+	for t := range ticker.C {
+		d.expireReminders(d.findByTime(t))
 	}
 }

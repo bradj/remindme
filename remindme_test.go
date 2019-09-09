@@ -5,42 +5,44 @@ import (
 	"time"
 )
 
+var body = "do remindme with brad"
+var author = "aaron"
+var reminder = Reminder{
+	Author:  author,
+	Body:    body,
+	EndTime: time.Now().Add(-time.Minute),
+}
+
 func TestFindByTime(t *testing.T) {
 	db := New()
-	author := "aaron"
 
-	db.Add(Reminder{
-		Author:  author,
-		Body:    "do remindme with brad",
-		EndTime: time.Now().Add(-time.Minute),
-	})
+	db.Add(reminder)
 
 	if db.Count() != 1 {
 		t.Error("Reminders map is not of length 1")
 	}
 
-	go db.findByTime(time.Now())
+	reminders := db.findByTime(time.Now())
 
-	rem := <-db.ExpiredReminders
+	if len(reminders) != 1 {
+		t.Errorf("Reminders should be of length 1 instead it is %d", len(reminders))
+	}
+
+	rem := reminders[0]
 
 	if a := rem.Author; a != author {
 		t.Errorf("Reminder author should be %v but was %v instead", author, a)
 	}
 
-	if db.Count() != 0 {
-		t.Error("Reminders map is not of length 0")
+	if b := rem.Body; b != body {
+		t.Error("Body mismatch in findByTime")
 	}
 }
 
 func TestFindByAuthor(t *testing.T) {
 	db := New()
-	author := "aaron"
 
-	db.Add(Reminder{
-		Author:  author,
-		Body:    "do remindme with brad",
-		EndTime: time.Now().Add(-time.Minute),
-	})
+	db.Add(reminder)
 
 	if db.Count() != 1 {
 		t.Error("Reminders map is not of length 1")
@@ -59,15 +61,9 @@ func TestFindByAuthor(t *testing.T) {
 
 func TestFindByKey(t *testing.T) {
 	db := New()
-
-	const author = "aaron"
 	const key = 0
 
-	db.Add(Reminder{
-		Author:  author,
-		Body:    "do remindme with brad",
-		EndTime: time.Now().Add(-time.Minute),
-	})
+	db.Add(reminder)
 
 	if db.Count() != 1 {
 		t.Error("Reminders map is not of length 1")
@@ -81,5 +77,27 @@ func TestFindByKey(t *testing.T) {
 
 	if a := rem.Author; a != author {
 		t.Errorf("Reminder Author was supposed to be %v but was %v instead", author, a)
+	}
+}
+
+func TestExpiredReminders(t *testing.T) {
+	db := New()
+
+	db.Add(reminder)
+
+	if db.Count() != 1 {
+		t.Error("Reminders map is not of length 1")
+	}
+
+	go db.expireReminders(db.findByAuthor(reminder.Author))
+
+	rem := <-db.ExpiredReminders
+
+	if rem.Author != reminder.Author {
+		t.Errorf("Reminder Author was supposed to be %s but was %s instead", reminder.Author, rem.Author)
+	}
+
+	if rem.Body != reminder.Body {
+		t.Errorf("Reminder Body was supposed to be %s but was %s instead", reminder.Author, rem.Author)
 	}
 }
