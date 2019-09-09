@@ -5,7 +5,8 @@ import (
 	"time"
 )
 
-type reminder struct {
+// Reminder object
+type Reminder struct {
 	ID      int
 	Author  string
 	Body    string
@@ -13,37 +14,55 @@ type reminder struct {
 	EndTime time.Time
 }
 
-type db struct {
-	expiredReminders chan reminder
+// DB for reminders
+type DB struct {
+	ExpiredReminders chan Reminder
 
-	mut       sync.Mutex
-	Reminders map[int]reminder
+	mut       sync.RWMutex
+	Reminders map[int]Reminder
 	ID        int
 }
 
 // New creates a db
-func New() db {
-	return db{
-		expiredReminders: make(chan reminder),
-		Reminders:        make(map[int]reminder),
+func New() DB {
+	return DB{
+		ExpiredReminders: make(chan Reminder),
+		Reminders:        make(map[int]Reminder),
 	}
 }
 
-func (d *db) Add(author string, body string, end time.Time) {
+// Add a new reminder
+func (d *DB) Add(author string, body string, end time.Time) {
 	d.mut.Lock()
 	defer d.mut.Unlock()
 
-	d.ID++
-
-	d.Reminders[d.ID] = reminder{
+	d.Reminders[d.ID] = Reminder{
 		ID:      d.ID,
 		Author:  author,
 		Body:    body,
 		EndTime: end,
 	}
+
+	d.ID++
 }
 
-func (d *db) find(t time.Time) {
+// Remove a reminder
+func (d *DB) Remove(r Reminder) {
+	d.mut.Lock()
+	defer d.mut.Unlock()
+
+	delete(d.Reminders, r.ID)
+}
+
+// Count all reminders
+func (d *DB) Count() int {
+	d.mut.RLock()
+	defer d.mut.RUnlock()
+
+	return len(d.Reminders)
+}
+
+func (d *DB) findByTime(t time.Time) {
 	d.mut.Lock()
 	defer d.mut.Unlock()
 
@@ -53,18 +72,50 @@ func (d *db) find(t time.Time) {
 		}
 
 		// send reminder
-		d.expiredReminders <- rem
+		d.ExpiredReminders <- rem
 
 		// remove reminder
 		delete(d.Reminders, rem.ID)
 	}
 }
 
-func (d *db) StartTicks() {
+func (d *DB) findByKey(key int) *Reminder {
+	d.mut.RLock()
+	defer d.mut.RUnlock()
+
+	rem, ok := d.Reminders[key]
+
+	if !ok {
+		return nil
+	}
+
+	return &rem
+}
+
+func (d *DB) findByAuthor(author string) []Reminder {
+	d.mut.RLock()
+	defer d.mut.RUnlock()
+
+	reminders := make([]Reminder, 0)
+
+	for _, rem := range d.Reminders {
+		if rem.Author != author {
+			continue
+		}
+
+		reminders = append(reminders, rem)
+	}
+
+	return reminders
+}
+
+// WaitForReminders starts the reminder timer and emits expired reminders
+// on DB.expiredReminders
+func (d *DB) WaitForReminders() {
 	ticker := time.NewTicker(time.Minute)
 
 	for {
 		t := <-ticker.C
-		d.find(t)
+		d.findByTime(t)
 	}
 }
