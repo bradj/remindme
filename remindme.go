@@ -1,9 +1,12 @@
 package remindme
 
 import (
+	"errors"
 	"sync"
 	"time"
 )
+
+var errPastEndTime = errors.New("end time must be after now")
 
 // Reminder object
 type Reminder struct {
@@ -33,14 +36,20 @@ func New() *DB {
 }
 
 // Add a new reminder
-func (d *DB) Add(reminder Reminder) {
+func (d *DB) Add(reminder Reminder) error {
 	d.mut.Lock()
 	defer d.mut.Unlock()
+
+	if reminder.EndTime.Before(time.Now()) {
+		return errPastEndTime
+	}
 
 	reminder.ID = d.ID
 	d.Reminders[d.ID] = reminder
 
 	d.ID++
+
+	return nil
 }
 
 // Remove a reminder
